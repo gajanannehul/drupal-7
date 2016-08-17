@@ -1,0 +1,314 @@
+<?php
+
+/**
+ * @file
+ * Implementation of hook_menu.
+ */
+ function common_settings_menu() {
+  $items = array();
+  $items['admin/settings/common_settings'] = array(
+    'title' => t('Common settings'),
+    'description' => t('Common settings'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array(
+      'common_admin_settings'
+    ),
+    'access arguments' => array(
+      'administer site configuration'
+    )
+  );
+  return $items;
+}
+
+/**
+ * Implementation admin configuration form.
+ */
+function common_admin_settings($form, &$form_state) {
+  $form = array();
+ 
+  $gateway_options['test_account'] = t('Test Account');
+  $gateway_options['live_account'] = t('Live Account');	
+  
+  $form['field_container'] = [
+    '#type' => 'container',
+    '#weight' => 80,
+    '#tree' => TRUE,
+    // Set up the wrapper so that AJAX will be able to replace the fieldset.
+    '#prefix' => '<div id="js-ajax-elements-wrapper">',
+    '#suffix' => '</div>',
+  ];
+
+  $api_url = variable_get('api_urls', array());
+ 
+  $count = count($api_url); 
+  $range = $count-1;
+  if($count == 0) {
+    $range = 0;
+  }
+   
+  $form_state['field_deltas'] = isset($form_state['field_deltas']) ? $form_state['field_deltas'] : range(0, $range);
+
+  $field_count = $form_state['field_deltas'];
+
+  foreach ($field_count as $delta) {
+    $form['field_container'][$delta] = [
+      '#type' => 'container',
+      '#attributes' => [
+        'class' => ['container-inline'],
+      ],
+      '#tree' => TRUE,
+    ];
+    if($count > $delta) {
+      $form['field_container'][$delta]['field'.$delta] = [
+        '#type' => 'textfield',
+        '#title' => t('Site url ' . $delta . ":"),
+        '#size' => 60,
+        '#default_value' => $api_url[$delta]['field'],
+      ];
+    } else {
+      $form['field_container'][$delta]['field'.$delta] = [
+        '#type' => 'textfield',
+        '#title' => t('Site url ' . $delta . ":"),
+        '#size' => 60,
+      ];  
+    }
+    $form['field_container'][$delta]['remove_name'] = [
+      '#type' => 'submit',
+      '#value' => t('Remove'),
+      '#submit' => ['common_settings_ajax_example_add_more_remove'],
+      '#ajax' => [
+        'callback' => 'common_settings_ajax_example_add_more_remove_callback',
+        'wrapper' => 'js-ajax-elements-wrapper',
+      ],
+
+      '#attributes' => [
+        'class' => ['button-small'],
+      ],
+      '#name' => 'remove_name_' . $delta,
+    ];
+  }
+  
+  $form['field_container']['add_name'] = [
+    '#type' => 'submit',
+    '#value' => t('Add one more'),
+    '#submit' => ['common_settings_ajax_example_add_more_add_one'],
+    '#ajax' => [
+      'callback' => 'common_settings_ajax_example_add_more_add_one_callback',
+      'wrapper' => 'js-ajax-elements-wrapper',
+    ],
+
+  ];
+  
+	$form['default_site_url'] = array (
+      '#type' => 'textfield',
+	  '#default_value' => variable_get('default_site_url','Test_url'),
+      '#title' => t('Default site url'),
+      '#size' => 60,			
+    ); 
+	$form['webservice_url'] = array (
+      '#type' => 'textfield',
+			'#default_value' => variable_get('webservice_url','Test_url'),
+      '#title' => t('Webservice url'),
+      '#size' => 60,			
+    );
+    
+   $form['payment_gateway'] = array (
+    '#type' => 'radios',
+    '#options' => $gateway_options,
+    '#title' => t('Select payment gateway type'),
+    '#weight' => 101,
+    '#description' => t('To connect live account or developers account'),
+    '#default_value' => variable_get('payment_gateway', t('test_account')),
+    '#required' => TRUE,			
+    );
+    
+   $form['g_paipath'] = array(
+    '#type' => 'textfield',
+    '#title' => t('G_APIPATH'),
+    '#weight' => 102,
+    '#description' => '',
+    '#default_value' => variable_get('g_paipath', t('/xml/v1/request.api')),
+  );
+  
+ // Test gateway fieldset   
+   $form['test_gateway'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Test account details'),
+      '#weight' => 102,
+      '#states' => array(
+      'visible' => array(
+        ':input[name="payment_gateway"]' => array('value' => t('test_account')),
+      ),
+     ),
+    );
+    
+    $form['test_gateway']['test_g_loginname'] = array(
+    '#type' => 'textfield',
+    '#title' => t('G_LOGINNAME'),
+    '#weight' => 102,
+    '#description' => '',
+    '#default_value' => variable_get('test_g_loginname', t('8DU55jaK4')),
+    '#states' => array(
+      'visible' => array(
+        ':input[name="payment_gateway"]' => array('value' => t('test_account')),
+      ),
+    ),
+  );
+  
+   $form['test_gateway']['test_g_transactionkey'] = array(
+    '#type' => 'textfield',
+    '#title' => t('G_TRANSACTIONKEY'),
+    '#weight' => 102,
+    '#description' => '',
+    '#default_value' => variable_get('test_g_transactionkey', t('6T32CZH9d6779nkh')),
+    '#states' => array(
+      'visible' => array(
+        ':input[name="payment_gateway"]' => array('value' => t('test_account')),
+      ),
+    ),
+  );
+  
+   $form['test_gateway']['test_g_apihost'] = array(
+    '#type' => 'textfield',
+    '#title' => t('G_APIHOST'),
+    '#weight' => 102,
+    '#description' => '',
+    '#default_value' => variable_get('test_g_apihost', t('apitest.authorize.net')),
+    '#states' => array(
+      'visible' => array(
+        ':input[name="payment_gateway"]' => array('value' => t('test_account')),
+      ),
+    ),
+  );
+  
+ // Live gateway fieldset   
+   $form['live_gateway'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Live account details'),
+      '#weight' => 102,
+      '#states' => array(
+      'visible' => array(
+        ':input[name="payment_gateway"]' => array('value' => t('live_account')),
+      ),
+     ),
+    );
+    
+    $form['live_gateway']['live_g_loginname'] = array(
+    '#type' => 'textfield',
+    '#title' => t('G_LOGINNAME'),
+    '#weight' => 102,
+    '#description' => '',
+    '#default_value' => variable_get('live_g_loginname', t('68S6K7W2zem9')),
+    '#states' => array(
+      'visible' => array(
+        ':input[name="payment_gateway"]' => array('value' => t('live_account')),
+      ),
+    ),
+  );
+  
+   $form['live_gateway']['live_g_transactionkey'] = array(
+    '#type' => 'textfield',
+    '#title' => t('G_TRANSACTIONKEY'),
+    '#weight' => 102,
+    '#description' => '',
+    '#default_value' => variable_get('live_g_transactionkey', t('798jGYy3axE86YFc')),
+    '#states' => array(
+      'visible' => array(
+        ':input[name="payment_gateway"]' => array('value' => t('live_account')),
+      ),
+    ),
+  );
+  
+   $form['live_gateway']['live_g_apihost'] = array(
+    '#type' => 'textfield',
+    '#title' => t('G_APIHOST'),
+    '#weight' => 102,
+    '#description' => '',
+    '#default_value' => variable_get('live_g_apihost', t('api.authorize.net')),
+    '#states' => array(
+      'visible' => array(
+        ':input[name="payment_gateway"]' => array('value' => t('live_account')),
+      ),
+    ),
+  );  	
+	
+  $form['#attached']['css'] = array(
+    drupal_get_path('module', 'common_settings') . '/common_settings.css',
+  );
+	
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save settings'),
+    '#weight' => 200,
+    '#prefix' => '<div id="submit">',
+    '#suffix' => '</div>',
+  );
+
+  return $form;
+}
+
+/**
+ * Submission callback: save configurations to variables.
+ *  
+ */
+function common_admin_settings_submit($form, &$form_state) {
+ $values = array();
+ 
+ foreach($form_state['values']['field_container'] as $k=>$v) {
+ if(is_numeric($k)) {
+  $values[] = array('field' => $v['field'.$k]);
+  }
+ }
+  variable_set('api_urls', $values);
+  variable_set('default_site_url', $form_state['values']['default_site_url']);
+  variable_set('webservice_url', $form_state['values']['webservice_url']);
+  
+  variable_set('payment_gateway', $form_state['values']['payment_gateway']);
+  variable_set('g_paipath', $form_state['values']['g_paipath']);
+  
+  variable_set('test_g_loginname', $form_state['values']['test_g_loginname']);
+  variable_set('test_g_transactionkey', $form_state['values']['test_g_transactionkey']);
+  variable_set('test_g_apihost', $form_state['values']['test_g_apihost']);
+  
+  variable_set('live_g_loginname', $form_state['values']['live_g_loginname']);
+  variable_set('live_g_transactionkey', $form_state['values']['live_g_transactionkey']);
+  variable_set('live_g_apihost', $form_state['values']['live_g_apihost']);
+  
+  drupal_set_message('Your settings has been saved.');
+}
+
+/*
+ * submit callback for remove site url.
+ */
+function common_settings_ajax_example_add_more_remove($form, &$form_state) {
+  $delta_remove = $form_state['triggering_element']['#parents'][1];
+  $k = array_search($delta_remove, $form_state['field_deltas']);
+  unset($form_state['field_deltas'][$k]);
+
+  $form_state['rebuild'] = TRUE;
+  drupal_get_messages();
+}
+
+/*
+ * submit callback for remove site url.
+ */
+function common_settings_ajax_example_add_more_remove_callback($form, &$form_state) {
+  return $form['field_container'];
+}
+
+/*
+ * Submit ajax callback for remove site url.
+ */
+function common_settings_ajax_example_add_more_add_one($form, &$form_state) {
+  $form_state['field_deltas'][] = count($form_state['field_deltas']) > 0 ? max($form_state['field_deltas']) + 1 : 0;
+  
+  $form_state['rebuild'] = TRUE;
+  drupal_get_messages();
+}
+
+/*
+ * Submit callback for add more site url.
+ */
+function common_settings_ajax_example_add_more_add_one_callback($form, $form_state) {
+  return $form['field_container'];
+}

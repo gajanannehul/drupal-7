@@ -1,0 +1,5 @@
+name = common_settings
+description = Common settings for site.
+core = 7.x
+
+
